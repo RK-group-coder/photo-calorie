@@ -156,9 +156,36 @@ function App() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
 
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Real-time Camera Lifecycle
+  useEffect(() => {
+    if (isCapturing && !selectedImage && !analysisResult) {
+      const startCamera = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1920 } }
+          });
+          setVideoStream(stream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (err) {
+          console.error("Camera access failed:", err);
+        }
+      };
+      startCamera();
+    } else {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        setVideoStream(null);
+      }
+    }
+  }, [isCapturing, selectedImage, analysisResult]);
 
   // Persistence & Session Restore
   useEffect(() => {
@@ -347,11 +374,14 @@ function App() {
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
       if (permission === 'granted') {
-        new Notification('✅ 通知已啟動！', {
-          body: 'PhotoCalorie 現在可以為您發送飲食提醒囉。',
-          icon: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
-        });
+        alert('✅ 系統通知已正常開啟！');
+        setIsNotificationModalOpen(false);
+      } else {
+        setIsNotificationModalOpen(false);
       }
+    } else {
+      alert('您的設備似乎不支援網頁通知，建議將此網頁「加入主畫面」後再試。');
+      setIsNotificationModalOpen(false);
     }
   };
 
@@ -1313,58 +1343,76 @@ function App() {
       exit={{ opacity: 0 }}
       className={`fixed inset-0 bg-black z-[100] ${analysisResult ? 'overflow-y-auto no-scrollbar scroll-smooth' : 'flex flex-col overflow-hidden'}`}
     >
-      {/* 1. Correct Header Position (Top Level) */}
-      <div className="bg-black/95 border-b border-white/5 px-6 pt-14 pb-6 shrink-0 z-50">
+      {/* 1. Header with Safe Area Support */}
+      <div 
+        className="bg-black/95 border-b border-white/5 px-6 pb-6 shrink-0 z-50 flex flex-col transition-all duration-300"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 44px) + 12px)' }}
+      >
         <div className="flex items-center justify-between">
           <button 
-            onClick={() => { setIsCapturing(false); setSelectedImage(null); setAnalysisResult(null); }} 
+            onClick={() => { 
+              setIsCapturing(false); 
+              setSelectedImage(null); 
+              setAnalysisResult(null); 
+              if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                setVideoStream(null);
+              }
+            }} 
             className="w-12 h-12 flex items-center justify-center text-zinc-400 bg-white/5 rounded-full active:scale-90 transition-transform"
           >
-            <ChevronLeft size={28} strokeWidth={3} />
+            <ChevronLeft size={32} strokeWidth={3} />
           </button>
           <div className="flex flex-col items-center">
-            <h1 className="text-primary font-black tracking-[0.3em] uppercase text-[15px] italic">Analysis</h1>
+            <h1 className="text-primary font-black tracking-[0.3em] uppercase text-xs italic">Live Scan</h1>
             <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1 animate-pulse" />
           </div>
           <div className="w-12 h-12" />
         </div>
       </div>
 
-      <div className={`relative flex flex-col flex-1 overflow-hidden ${analysisResult ? 'overflow-y-auto' : ''}`}>
+      <div className={`relative flex flex-col flex-1 overflow-hidden touch-none ${analysisResult ? 'overflow-y-auto' : ''}`}>
         {/* viewfinder content */}
-        <div className={`relative flex items-center justify-center shrink-0 ${analysisResult ? 'w-full bg-black py-10' : 'flex-1 bg-zinc-900/10 px-4'}`}>
+        <div className={`relative flex items-center justify-center shrink-0 ${analysisResult ? 'w-full bg-black py-10' : 'flex-1 bg-zinc-950/20 px-4'}`}>
         {selectedImage ? (
-          <div className="relative w-[92%] h-auto max-h-[50vh] rounded-[32px] overflow-hidden border-[4px] border-primary shadow-[0_0_30px_rgba(245,158,11,0.5)] z-10">
+          <div className="relative w-[92%] aspect-[3/4] max-h-[60vh] rounded-[48px] overflow-hidden border-[6px] border-primary shadow-[0_0_50px_rgba(245,158,11,0.5)] z-10">
             <img 
               src={selectedImage} 
               className="w-full h-full object-cover" 
               alt="Captured" 
             />
-            {isAnalyzing && (
-              <motion.div 
-                animate={{ top: ['0%', '100%', '0%'] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                className="absolute left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-white to-transparent shadow-[0_0_20px_rgba(255,255,255,1)] z-20"
-              />
-            )}
-            {isAnalyzing && (
-              <div className="absolute inset-0 bg-primary/20 animate-pulse mix-blend-overlay z-10" />
-            )}
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-             <div className="relative w-[92%] aspect-[3/4] rounded-[48px] border-2 border-white/5 overflow-hidden box-content shadow-[0_0_0_2000px_rgba(0,0,0,0.8)] transition-all duration-500">
+             <div className="relative w-[92%] aspect-[3/4] rounded-[56px] border-2 border-white/10 overflow-hidden shadow-[0_0_0_2000px_rgba(0,0,0,0.85)] bg-black transition-all">
+                {/* LIVE CAMERA FEED */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover opacity-80"
+                />
+
+                {/* Status Indicator */}
+                {!videoStream && !selectedImage && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
+                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-primary font-black text-[10px] uppercase tracking-widest animate-pulse">Accessing Camera...</span>
+                  </div>
+                )}
+
                 {/* Extra Large Luxury Corners */}
-                <div className="absolute top-0 left-0 w-16 h-16 border-t-[6px] border-l-[6px] border-primary rounded-tl-[48px] m-[-2px]" />
-                <div className="absolute top-0 right-0 w-16 h-16 border-t-[6px] border-r-[6px] border-primary rounded-tr-[48px] m-[-2px]" />
-                <div className="absolute bottom-0 left-0 w-16 h-16 border-b-[6px] border-l-[6px] border-primary rounded-bl-[48px] m-[-2px]" />
-                <div className="absolute bottom-0 right-0 w-16 h-16 border-b-[6px] border-r-[6px] border-primary rounded-br-[48px] m-[-2px]" />
+                <div className="absolute top-0 left-0 w-16 h-16 border-t-[6px] border-l-[6px] border-primary rounded-tl-[56px] m-[-2px] z-20" />
+                <div className="absolute top-0 right-0 w-16 h-16 border-t-[6px] border-r-[6px] border-primary rounded-tr-[56px] m-[-2px] z-20" />
+                <div className="absolute bottom-0 left-0 w-16 h-16 border-b-[6px] border-l-[6px] border-primary rounded-bl-[56px] m-[-2px] z-20" />
+                <div className="absolute bottom-0 right-0 w-16 h-16 border-b-[6px] border-r-[6px] border-primary rounded-br-[56px] m-[-2px] z-20" />
 
                 {/* Constant Scan Line Animation */}
                 <motion.div 
                   animate={{ top: ['0%', '100%', '0%'] }}
                   transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                  className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary/60 to-transparent shadow-[0_0_30px_rgba(245,158,11,1)] z-10"
+                  className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_40px_rgba(245,158,11,1)] z-30"
                 />
              </div>
           </div>
