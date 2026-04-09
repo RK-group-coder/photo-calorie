@@ -686,6 +686,26 @@ function App() {
     }
   };
 
+  const capturePhoto = () => {
+    if (videoRef.current && videoStream) {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setSelectedImage(dataUrl);
+        startAnalysis(dataUrl);
+        
+        // Stop stream after capture
+        videoStream.getTracks().forEach(track => track.stop());
+        setVideoStream(null);
+      }
+    }
+  };
+
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1472,20 +1492,32 @@ function App() {
       <div className={`bg-black/95 backdrop-blur-3xl border-t border-white/5 transition-all duration-500 ease-in-out relative z-20 ${analysisResult ? 'w-full p-8 pb-32' : 'w-full p-10 space-y-8 mt-auto'}`}>
         {!analysisResult ? (
           <div className="flex flex-col items-center gap-10">
-            {/* SHUTTER BUTTON - NATIVE LABEL FIX */}
+            {/* SHUTTER BUTTON - NATIVE APP FEEL FIX */}
             {!selectedImage && !isAnalyzing && (
               <div className="relative">
-                <label className="block w-24 h-24 rounded-full border-[6px] border-zinc-700/50 p-1.5 active:scale-90 transition-transform cursor-pointer shadow-2xl">
-                  <div className="w-full h-full rounded-full bg-white shadow-[0_0_30px_rgba(255,255,255,0.4)]" />
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*" 
-                    capture={scanMode === 'food' ? "environment" : undefined}
-                    onChange={handleImageSelect}
-                  />
-                </label>
-                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-primary font-black text-[10px] uppercase tracking-widest italic whitespace-nowrap">Tap to Scan</span>
+                {scanMode === 'food' ? (
+                  <button 
+                    onClick={capturePhoto}
+                    className="block w-24 h-24 rounded-full border-[6px] border-zinc-700/50 p-1.5 active:scale-95 transition-all cursor-pointer shadow-2xl relative group"
+                  >
+                    <div className="w-full h-full rounded-full bg-white shadow-[0_0_30px_rgba(255,255,255,0.4)] group-active:bg-zinc-200 transition-colors" />
+                    {/* Inner mechanical ring */}
+                    <div className="absolute inset-2 border-2 border-zinc-200/20 rounded-full" />
+                  </button>
+                ) : (
+                  <label className="block w-24 h-24 rounded-full border-[6px] border-zinc-700/50 p-1.5 active:scale-90 transition-transform cursor-pointer shadow-2xl">
+                    <div className="w-full h-full rounded-full bg-white shadow-[0_0_30px_rgba(255,255,255,0.4)]" />
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleImageSelect}
+                    />
+                  </label>
+                )}
+                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-primary font-black text-[10px] uppercase tracking-widest italic whitespace-nowrap">
+                  {scanMode === 'food' ? 'In-App Capture' : 'Upload Photo'}
+                </span>
               </div>
             )}
 
