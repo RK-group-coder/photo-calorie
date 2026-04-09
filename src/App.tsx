@@ -257,16 +257,20 @@ function App() {
         .order('created_at', { ascending: false });
 
       if (dbLogs) {
-        const formattedLogs: FoodLog[] = dbLogs.map(l => ({
-          id: l.id,
-          foodName: l.food_name, // Should be in Chinese
-          calories: l.calories,
-          protein: l.protein,
-          carbs: l.carbs,
-          fat: l.fats,
-          timestamp: new Date(l.created_at).getTime(),
-          imageUrl: l.image_url
-        }));
+        const formattedLogs: FoodLog[] = dbLogs.map(l => {
+          // 🌏 Timezone Fix: Ensure UTC created_at matches local start-of-day
+          const localDate = new Date(l.created_at);
+          return {
+            id: l.id,
+            foodName: l.food_name,
+            calories: l.calories,
+            protein: l.protein,
+            carbs: l.carbs,
+            fat: l.fats,
+            timestamp: localDate.getTime(),
+            imageUrl: l.image_url
+          };
+        });
         setLogs(formattedLogs);
       }
       // 3. Post-load check for meal reminders
@@ -744,7 +748,35 @@ function App() {
 
   const uploadImage = async (base64: string, path: string) => {
     try {
-      const base64Data = base64.split(',')[1];
+      // 🚀 TURBO SYNC: Image Compression Logic
+      const img = new Image();
+      img.src = base64;
+      await new Promise(resolve => img.onload = resolve);
+
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      const MAX_SIZE = 1280; // Optimized for web/AI mobile
+
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        }
+      } else {
+        if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+      const base64Data = compressedBase64.split(',')[1];
       const byteCharacters = atob(base64Data);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -752,16 +784,22 @@ function App() {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'image/jpeg' });
+      
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
       const fullPath = `${path}/${fileName}`;
 
-      const { error } = await supabase.storage.from('images').upload(fullPath, blob, { contentType: 'image/jpeg' });
+      const { error } = await supabase.storage.from('images').upload(fullPath, blob, { 
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+        upsert: false
+      });
+      
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fullPath);
       return publicUrl;
     } catch (err) {
-      console.error('Upload error:', err);
-      return base64;
+      console.error('Turbo upload failed, falling back to original:', err);
+      return base64; // Fallback
     }
   };
 
@@ -1065,6 +1103,27 @@ function App() {
                 <p className="text-zinc-500 text-[11px] mt-0.5 font-bold leading-snug">{aiMessage.subtitle}</p>
              </motion.div>
           </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Weekly History Summary */}
+      <div className="bg-zinc-900/40 rounded-[32px] p-6 border border-white/5 mb-8">
+        <h3 className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+           <History size={14} /> 全期飲食歷史統計 Overall Statistics
+        </h3>
+        <div className="grid grid-cols-3 gap-6">
+           <div className="text-center">
+             <p className="text-2xl font-black text-white">{logs.length}</p>
+             <p className="text-[9px] text-zinc-600 font-bold uppercase">總記錄天數</p>
+           </div>
+           <div className="text-center">
+             <p className="text-2xl font-black text-primary">{Math.round(logs.reduce((acc, l) => acc + (l.calories || 0), 0) / (logs.length || 1))}</p>
+             <p className="text-[9px] text-zinc-600 font-bold uppercase">日均熱量</p>
+           </div>
+           <div className="text-center">
+             <p className="text-2xl font-black text-emerald-500">{logs.filter(l => l.imageUrl).length}</p>
+             <p className="text-[9px] text-zinc-600 font-bold uppercase">照片分析數</p>
+           </div>
         </div>
       </div>
 
@@ -1585,41 +1644,48 @@ function App() {
         ) : (
           <div className="w-full space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
             {/* 🩺 PROFESSIONAL ANALYSIS REPORT LAYOUT */}
-            {/* 1. Primary Metrics Header */}
-            <div className="flex justify-between items-start border-b border-primary/10 pb-8">
-              <div className="flex flex-col gap-3 flex-1 pr-4">
-                <input 
-                  type="text"
-                  value={analysisResult.foodName}
-                  onChange={(e) => setAnalysisResult({...analysisResult, foodName: e.target.value})}
-                  className="text-4xl font-black text-white tracking-tighter bg-transparent border-b border-dashed border-white/10 hover:border-primary/40 focus:border-primary focus:outline-none transition-all w-full pb-2 placeholder:text-zinc-700"
-                />
-                <div className="flex items-center gap-2">
-                  <span className="text-primary font-black text-xs bg-primary/10 px-4 py-2 rounded-lg border border-primary/20 flex items-center gap-2">
-                     <Flame size={14} className="animate-pulse" />
-                     {analysisResult.calories} KCAL
-                  </span>
-                  <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest bg-zinc-900 px-3 py-2 rounded-lg">
-                     Portion Estimated
-                  </span>
+            {/* 1. Primary Metrics Header - LARGE ORANGE DESIGN */}
+            <div className="flex flex-col gap-6 border-b border-white/5 pb-10">
+              <div className="flex justify-between items-start">
+                <div className="flex-1 pr-4">
+                  <input 
+                    type="text"
+                    value={analysisResult.foodName}
+                    onChange={(e) => setAnalysisResult({...analysisResult, foodName: e.target.value})}
+                    className="text-4xl font-black text-white tracking-tighter bg-transparent border-b border-dashed border-white/10 hover:border-primary/40 focus:border-primary focus:outline-none transition-all w-full pb-2 placeholder:text-zinc-700"
+                  />
+                </div>
+                <div className="flex flex-col items-end gap-1 text-zinc-600 text-[9px] font-black uppercase tracking-[0.2em] pt-2">
+                  <Clock size={12} />
+                  <span>Verified Just Now</span>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1 text-zinc-600 text-[9px] font-black uppercase tracking-[0.2em] pt-2">
-                <Clock size={12} />
-                <span>Verified Just Now</span>
+
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col">
+                  <span className="text-7xl font-black text-primary italic tracking-tighter leading-none">
+                    {analysisResult.calories}
+                  </span>
+                  <span className="text-sm font-black text-primary uppercase tracking-[0.3em] ml-1 mt-1">KCAL</span>
+                </div>
+                <div className="h-14 w-[1px] bg-white/10" />
+                <div className="flex flex-col justify-center">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Status / 診斷狀態</span>
+                  <span className="text-white font-black text-xs bg-zinc-900 border border-white/5 px-4 py-2 rounded-xl">PORTION ESTIMATED</span>
+                </div>
               </div>
             </div>
 
-            {/* 2. Precision Macronutrient Grid */}
+            {/* 2. Precision Macronutrient Grid - STRICT WHITE FONT */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'CARBS 碳水', value: analysisResult.carbs, color: 'text-white', sub: 'Energy Source' },
-                { label: 'PROTEIN 蛋白', value: analysisResult.protein, color: 'text-primary', sub: 'Muscle Support' },
-                { label: 'FATS 脂肪', value: analysisResult.fat, color: 'text-zinc-400', sub: 'Hormone Reg.' }
+                { label: 'CARBS 碳水', value: analysisResult.carbs },
+                { label: 'PROTEIN 蛋白', value: analysisResult.protein },
+                { label: 'FATS 脂肪', value: analysisResult.fat }
               ].map((macro, i) => (
-                <div key={i} className="bg-zinc-900/50 p-5 rounded-[28px] border border-white/5 flex flex-col items-center gap-1 shadow-lg">
-                  <span className={`text-4xl font-black ${macro.color}`}>{macro.value}<span className="text-[10px] ml-0.5">g</span></span>
-                  <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{macro.label}</span>
+                <div key={i} className="bg-zinc-900/50 p-6 rounded-[32px] border border-white/5 flex flex-col items-center gap-1 shadow-xl">
+                  <span className="text-4xl font-black text-white">{macro.value}<span className="text-[10px] ml-0.5 opacity-40">g</span></span>
+                  <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">{macro.label}</span>
                 </div>
               ))}
             </div>
@@ -2844,7 +2910,7 @@ function App() {
                       });
                       if (error) throw error;
                       setIsLoggedIn(true);
-                      if (data.user) loadUserData(data.user.id);
+                      if (data.user) await loadUserData(data.user.id);
                     } else {
                       // Register Logic
                       const { data, error } = await supabase.auth.signUp({
@@ -2861,7 +2927,7 @@ function App() {
                           name: '',
                           password: authPassword
                         }]);
-                        loadUserData(data.user.id);
+                        await loadUserData(data.user.id);
                       }
                       
                       setIsLoggedIn(true);
