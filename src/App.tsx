@@ -623,12 +623,19 @@ function App() {
 
   // AI Logic
   const startAnalysis = async (base64Image: string) => {
+    if (!base64Image) return;
     setIsAnalyzing(true);
+    setAnalysisResult(null); // Clear previous results
     try {
       const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) throw new Error('API Key missing');
+      if (!apiKey) {
+        alert('⚠️ 系統偵測到 API Key 缺失！請確保已在 Vercel 設定 VITE_OPENAI_API_KEY。');
+        setIsAnalyzing(false);
+        return;
+      }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      console.log("Starting OpenAI Vision Analysis...");
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -648,14 +655,19 @@ function App() {
         })
       });
 
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || 'Fine-tuning the vision sensor...');
+      }
+
       const data = await response.json();
       const content = data.choices[0].message.content;
       const jsonContent = content.replace(/```json/g, '').replace(/```/g, '').trim();
       const result = JSON.parse(jsonContent);
       setAnalysisResult(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('系統辨識忙碌中，請稍後再試');
+      alert('辨識失敗: ' + (error.message || '請再試一次'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -1477,6 +1489,26 @@ function App() {
               </div>
             )}
 
+            {/* MANUAL ACTIONS WHEN IMAGE SELECTED */}
+            {selectedImage && !isAnalyzing && !analysisResult && (
+              <div className="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4">
+                 <button 
+                  onClick={() => startAnalysis(selectedImage)}
+                  className="w-full py-5 bg-primary text-black font-black rounded-3xl text-xl shadow-[0_10px_30px_rgba(245,158,11,0.3)] flex items-center justify-center gap-3 active:scale-95 transition-transform"
+                 >
+                   <Zap size={24} />
+                   ✨ 開始 AI 辨識分析
+                 </button>
+                 <button 
+                  onClick={() => { setSelectedImage(null); setAnalysisResult(null); }}
+                  className="w-full py-5 bg-zinc-800 text-zinc-400 font-bold rounded-3xl active:scale-95 transition-transform flex items-center justify-center gap-2"
+                 >
+                   <RefreshCcw size={18} />
+                   重新拍攝
+                 </button>
+              </div>
+            )}
+
             {/* Mode Selector */}
             {!selectedImage && (
               <div className="bg-zinc-900/80 p-1.5 rounded-full flex gap-1 border border-white/5 shadow-2xl backdrop-blur-md">
@@ -1985,14 +2017,14 @@ function App() {
                    
                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                        <div className="space-y-2">
-                           <div className="flex items-center gap-2"><div className="w-4 h-4 bg-orange-500 rounded flex shrink-0"/> <h4 className="font-black text-white text-sm">統計儀表板</h4></div>
+                           <div className="flex items-center gap-2"> <h4 className="font-black text-white text-lg">統計儀表板</h4></div>
                            <p className="text-xs font-medium text-zinc-400 pl-6 leading-relaxed">
                              上半部的儀表板統整了您當月的紀綠進度。「當月紀錄天數」計算您有持續記錄不偷懶的天數比例。「指標達成品質」則是統計您本月所有紀錄中的達標狀態比例。
                            </p>
                        </div>
 
                        <div className="space-y-2">
-                           <div className="flex items-center gap-2"><div className="w-4 h-4 bg-zinc-700 border border-white/20 rounded flex shrink-0"/> <h4 className="font-black text-white text-sm">月曆燈號標示</h4></div>
+                           <div className="flex items-center gap-2"> <h4 className="font-black text-white text-lg">月曆燈號標示</h4></div>
                            <p className="text-xs font-medium text-zinc-400 pl-6 leading-relaxed">
                              在月曆上，每一天都會根據當日最後結算的熱量，對應您的「目標熱量」進行誤差計算，並自動變色發光：
                            </p>
@@ -2004,7 +2036,7 @@ function App() {
                        </div>
 
                        <div className="space-y-2">
-                           <div className="flex items-center gap-2"><span className="text-xl">👉</span><h4 className="font-black text-white text-sm">如何補登紀錄？</h4></div>
+                           <div className="flex items-center gap-2"><h4 className="font-black text-white text-lg">如何補登紀錄？</h4></div>
                            <p className="text-xs font-medium text-zinc-400 pl-6 leading-relaxed">
                              如果您忘記記錄前幾天的飲食，請先在「月曆上點選那一天」，然後切換回底部的「首頁」進行掃描或手動登記。儲存時，您的紀錄會自動被「穿越時空」綁定到您選取的那一天，不會干擾今日的計算！
                            </p>
@@ -2013,7 +2045,7 @@ function App() {
                    
                    <button 
                      onClick={() => setShowHistoryGuide(false)}
-                     className="w-full bg-primary hover:bg-amber-500 text-black font-black py-3 rounded-xl transition-all shadow-lg active:scale-95 text-center block mt-6"
+                     className="w-full bg-primary hover:bg-amber-500 text-black font-black py-4 rounded-none text-lg transition-all shadow-lg active:scale-95 text-center block mt-6"
                    >
                      我了解了
                    </button>
@@ -2809,15 +2841,32 @@ function App() {
           <TabButton id="home" activeTab={activeTab} setTab={setActiveTab} icon={<Home size={24} />} label="首頁" />
           <TabButton id="activity" activeTab={activeTab} setTab={setActiveTab} icon={<History size={24} />} label="歷史" />
           
-          {/* Main Scan Button */}
-          <motion.button 
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsCapturing(true)}
-            className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-black shadow-[0_0_30px_rgba(245,158,11,0.5)] border-4 border-black -mt-10"
-          >
-            <Scan size={32} strokeWidth={3} />
-          </motion.button>
+          {/* Main 3D Scan Button Engine */}
+          <div className="relative -mt-14 mb-2">
+            {/* Pulsing Aura */}
+            <motion.div 
+              animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute inset-[-8px] bg-primary/20 rounded-full blur-xl"
+            />
+
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.9, y: 5 }}
+              onClick={() => setIsCapturing(true)}
+              className="relative w-20 h-20 bg-gradient-to-br from-amber-300 via-primary to-amber-600 rounded-full flex items-center justify-center text-black shadow-[0_15px_30px_rgba(0,0,0,0.6),inset_0_4px_8px_rgba(255,255,255,0.4),inset_0_-4px_8px_rgba(0,0,0,0.4)] border-[3px] border-black z-10 overflow-hidden group"
+            >
+              {/* Glossy Reflection Overlay */}
+              <div className="absolute top-0 left-0 w-full h-1/2 bg-white/20 skew-y-[-15deg] group-hover:translate-x-full transition-transform duration-700" />
+              
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+              >
+                <Scan size={36} strokeWidth={3} className="drop-shadow-md" />
+              </motion.div>
+            </motion.button>
+          </div>
 
           <TabButton id="target" activeTab={activeTab} setTab={setActiveTab} icon={<Target size={24} />} label="目標" />
           <TabButton id="settings" activeTab={activeTab} setTab={setActiveTab} icon={<Settings size={24} />} label="設定" />
