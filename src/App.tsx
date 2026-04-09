@@ -1489,19 +1489,16 @@ function App() {
               </div>
             )}
 
-            {/* MANUAL ACTIONS WHEN IMAGE SELECTED */}
+            {/* AUTO-TRIGGER STATE FEEDBACK WHEN IMAGE SELECTED */}
             {selectedImage && !isAnalyzing && !analysisResult && (
-              <div className="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4">
-                 <button 
-                  onClick={() => startAnalysis(selectedImage)}
-                  className="w-full py-5 bg-primary text-black font-black rounded-3xl text-xl shadow-[0_10px_30px_rgba(245,158,11,0.3)] flex items-center justify-center gap-3 active:scale-95 transition-transform"
-                 >
-                   <Zap size={24} />
-                   ✨ 開始 AI 辨識分析
-                 </button>
+              <div className="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 items-center">
+                 <div className="flex items-center gap-3 py-6">
+                    <div className="w-3 h-3 bg-primary rounded-full animate-ping" />
+                    <span className="text-white font-black tracking-widest uppercase italic">Preparing AI Engine...</span>
+                 </div>
                  <button 
                   onClick={() => { setSelectedImage(null); setAnalysisResult(null); }}
-                  className="w-full py-5 bg-zinc-800 text-zinc-400 font-bold rounded-3xl active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-zinc-800/50 text-zinc-500 font-bold rounded-3xl active:scale-95 transition-transform flex items-center justify-center gap-2 border border-white/5"
                  >
                    <RefreshCcw size={18} />
                    重新拍攝
