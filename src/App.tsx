@@ -1582,84 +1582,105 @@ function App() {
             )}
           </div>
         ) : (
-          <div className="w-full space-y-6 pb-12">
-            {/* Title & Calories */}
-            <div className="flex justify-between items-center border-b border-white/5 pb-8">
-              <div className="flex flex-col gap-3 relative w-full pr-4">
+          <div className="w-full space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            {/* 🩺 PROFESSIONAL ANALYSIS REPORT LAYOUT */}
+            {/* 1. Primary Metrics Header */}
+            <div className="flex justify-between items-start border-b border-primary/10 pb-8">
+              <div className="flex flex-col gap-3 flex-1 pr-4">
                 <input 
                   type="text"
                   value={analysisResult.foodName}
                   onChange={(e) => setAnalysisResult({...analysisResult, foodName: e.target.value})}
-                  className="text-4xl font-black text-white tracking-tight bg-transparent border-b border-dashed border-white/30 hover:border-white/60 focus:border-primary focus:outline-none transition-colors w-full pb-1 placeholder:text-zinc-600"
-                  placeholder="Enter food name"
+                  className="text-4xl font-black text-white tracking-tighter bg-transparent border-b border-dashed border-white/10 hover:border-primary/40 focus:border-primary focus:outline-none transition-all w-full pb-2 placeholder:text-zinc-700"
                 />
-                <div className="flex items-center">
-                  <span className="text-zinc-200 font-bold text-sm bg-white/10 px-4 py-1.5 rounded-full">{analysisResult.calories} cl</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-primary font-black text-xs bg-primary/10 px-4 py-2 rounded-lg border border-primary/20 flex items-center gap-2">
+                     <Flame size={14} className="animate-pulse" />
+                     {analysisResult.calories} KCAL
+                  </span>
+                  <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest bg-zinc-900 px-3 py-2 rounded-lg">
+                     Portion Estimated
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-auto mb-1 shrink-0">
+              <div className="flex flex-col items-end gap-1 text-zinc-600 text-[9px] font-black uppercase tracking-[0.2em] pt-2">
                 <Clock size={12} />
-                Just Now
-              </div>
-            </div>
-            
-            {/* Macronutrients Grid */}
-            <div className="grid grid-cols-4 gap-2 text-center border-b border-white/5 pb-8 relative">
-              <div className="flex flex-col">
-                <p className="text-3xl font-black text-primary">{analysisResult.calories}</p>
-                <p className="text-[9px] text-primary font-black uppercase tracking-[0.1em] mt-2">Calories</p>
-              </div>
-              <div className="flex flex-col">
-                <p className="text-3xl font-black text-white">{analysisResult.carbs}g</p>
-                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-[0.1em] mt-2">Carbs</p>
-              </div>
-              <div className="flex flex-col">
-                <p className="text-3xl font-black text-white">{analysisResult.protein}g</p>
-                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-[0.1em] mt-2">Proteins</p>
-              </div>
-              <div className="flex flex-col">
-                <p className="text-3xl font-black text-white">{analysisResult.fat}g</p>
-                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-[0.1em] mt-2">Fats</p>
+                <span>Verified Just Now</span>
               </div>
             </div>
 
-            {/* Ingredients List */}
-            <div className="space-y-4 pt-2">
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest italic mb-6">詳細食材成分</p>
-              {analysisResult.ingredients?.map((ing: any, idx: number) => (
-                <div key={idx} className="flex flex-col gap-2 pb-5 border-b border-white/5 last:border-0 last:pb-2">
-                  <div className="flex justify-between items-end">
-                    <span className="text-zinc-200 font-black text-[17px]">{ing.name}</span>
-                    <span className="text-zinc-400 text-xs font-black">{ing.weight}g</span>
-                  </div>
-                  <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-zinc-300">{ing.calories} CL</span>
-                    <span className="text-blue-500">{ing.carbs}G C</span>
-                    <span className="text-green-500">{ing.protein}G P</span>
-                    <span className="text-red-500">{ing.fat}G F</span>
-                  </div>
+            {/* 2. Precision Macronutrient Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'CARBS 碳水', value: analysisResult.carbs, color: 'text-white', sub: 'Energy Source' },
+                { label: 'PROTEIN 蛋白', value: analysisResult.protein, color: 'text-primary', sub: 'Muscle Support' },
+                { label: 'FATS 脂肪', value: analysisResult.fat, color: 'text-zinc-400', sub: 'Hormone Reg.' }
+              ].map((macro, i) => (
+                <div key={i} className="bg-zinc-900/50 p-5 rounded-[28px] border border-white/5 flex flex-col items-center gap-1 shadow-lg">
+                  <span className={`text-4xl font-black ${macro.color}`}>{macro.value}<span className="text-[10px] ml-0.5">g</span></span>
+                  <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{macro.label}</span>
                 </div>
               ))}
             </div>
+
+            {/* 3. Detailed Ingredient Breakdown */}
+            <div className="bg-zinc-900/30 rounded-[32px] p-8 border border-white/5 space-y-6">
+              <div className="flex items-center justify-between mb-2">
+                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] italic">Precision Breakdown / 份量拆解</p>
+                 <div className="w-12 h-1 bg-primary/20 rounded-full" />
+              </div>
+              
+              <div className="space-y-6">
+                {analysisResult.ingredients?.map((ing: any, idx: number) => (
+                  <div key={idx} className="group">
+                    <div className="flex justify-between items-end mb-2">
+                      <span className="text-zinc-100 font-black text-lg group-hover:text-primary transition-colors">{ing.name}</span>
+                      <span className="text-zinc-500 text-xs font-bold font-mono">{ing.weight}g</span>
+                    </div>
+                    <div className="flex gap-4 text-[9px] font-black uppercase tracking-widest text-zinc-500 opacity-60">
+                      <span className="text-zinc-400">{ing.calories} CAL</span>
+                      <span>{ing.carbs}G C</span>
+                      <span>{ing.protein}G P</span>
+                      <span>{ing.fat}G F</span>
+                    </div>
+                    <div className="w-full h-[1px] bg-white/5 mt-5" />
+                  </div>
+                ))}
+              </div>
+            </div>
             
-            {/* Evaluation Comment */}
+            {/* 4. Professional Nutritionist's Evaluation */}
             {analysisResult.evaluation && (
-              <div className="bg-zinc-900/40 p-6 rounded-2xl border border-white/5 mt-8 relative overflow-hidden group">
-                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-2 italic">Nutritionist's Note / 營養師評語</h4>
-                <p className="text-sm text-zinc-300 leading-relaxed font-bold relative z-10">{analysisResult.evaluation}</p>
+              <div className="bg-primary/5 p-8 rounded-[36px] border border-primary/10 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full -mr-16 -mt-16" />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black">
+                       <Activity size={18} />
+                    </div>
+                    <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] italic">Consultant's Diagnosis / 營養師診斷</h4>
+                  </div>
+                  <p className="text-[15px] text-zinc-200 leading-relaxed font-bold tracking-tight">
+                    {analysisResult.evaluation}
+                  </p>
+                </div>
               </div>
             )}
 
-            <div className="flex flex-col gap-4 mt-8 pt-4 border-t border-white/5">
-              <button onClick={confirmLog} className="w-full py-5 bg-primary text-black rounded-3xl font-black text-lg shadow-[0_10px_30px_rgba(245,158,11,0.2)] active:scale-95 transition-transform flex items-center justify-center gap-3">
-                <CheckCircle2 size={24} strokeWidth={2.5} /> 登記在今日紀錄
+            {/* 5. Final Confirmation Action */}
+            <div className="pt-4 flex gap-3">
+              <button 
+                onClick={confirmLog}
+                className="flex-[2] py-6 bg-primary text-black font-black text-xl rounded-[28px] shadow-[0_20px_40px_rgba(245,158,11,0.2)] active:scale-95 transition-all flex items-center justify-center gap-3"
+              >
+                <CheckCircle2 size={24} />
+                確認並紀錄此餐
               </button>
               <button 
-                onClick={() => { setIsCapturing(false); setSelectedImage(null); setAnalysisResult(null); }} 
-                className="w-full py-4 bg-zinc-800 border-[3px] border-white/50 text-white hover:bg-zinc-700 hover:border-white rounded-3xl font-black text-lg active:scale-95 transition-all flex items-center justify-center gap-3 shadow-lg"
+                onClick={() => { setSelectedImage(null); setAnalysisResult(null); }}
+                className="flex-1 py-6 bg-zinc-900 text-zinc-400 font-bold rounded-[28px] active:scale-95 transition-all flex items-center justify-center border border-white/5"
               >
-                <X size={24} strokeWidth={2.5} /> 不紀錄，返回主頁
+                <RefreshCcw size={20} />
               </button>
             </div>
           </div>
