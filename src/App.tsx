@@ -2783,7 +2783,10 @@ function App() {
     <div className="min-h-screen bg-black text-zinc-50 font-['Outfit'] selection:bg-primary/30">
         {!isLoggedIn && renderAuth()}
       {/* Content Wrapper */}
-      <div className="max-w-md mx-auto h-screen relative flex flex-col pt-4 overflow-hidden">
+      <div 
+        className="max-w-md mx-auto h-screen relative flex flex-col overflow-hidden"
+        style={{ paddingTop: 'env(safe-area-inset-top, 44px)' }}
+      >
         
         {/* Main View Area */}
         <div className="flex-1 overflow-y-auto px-6 pb-32">
