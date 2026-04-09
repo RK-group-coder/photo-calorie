@@ -154,6 +154,7 @@ function App() {
   const [isBroadcastingGlobal, setIsBroadcastingGlobal] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [isCelebrationActive, setIsCelebrationActive] = useState(false);
   const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
 
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
@@ -369,13 +370,26 @@ function App() {
     }
   }, []);
 
+  const testNotification = () => {
+    if (Notification.permission === 'granted') {
+      new Notification('PhotoCalorie ✨', {
+        body: '您的健康提醒功能已成功開啟！我們會定時關心您的飲食紀錄。',
+        icon: 'https://cdn-icons-png.flaticon.com/512/1037/1037762.png'
+      });
+    }
+  };
+
   const requestNotificationPermission = async () => {
     if ('Notification' in window) {
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
       if (permission === 'granted') {
-        alert('✅ 系統通知已正常開啟！');
-        setIsNotificationModalOpen(false);
+        setIsCelebrationActive(true);
+        testNotification();
+        setTimeout(() => {
+          setIsCelebrationActive(false);
+          setIsNotificationModalOpen(false);
+        }, 3000);
       } else {
         setIsNotificationModalOpen(false);
       }
@@ -2283,7 +2297,7 @@ function App() {
                     <p className="text-xs text-primary/80 font-medium">本 App 提供的飲食營養數據僅供參考，不具備專業醫療診斷、處方或治療依據。若有特殊疾病或醫療需求，請諮詢專業醫師或營養師。</p>
                   </div>
                   <h4 className="text-white font-bold text-lg mt-6 mb-2">聯絡客服</h4>
-                  <p>若您遇到任何註冊登入、資料同步等問題，請寄信至：<br/><a href="mailto:support@photocalorie.cc" className="text-amber-500 hover:text-amber-400 font-bold underline cursor-pointer">support@photocalorie.cc</a></p>
+                  <p>若您遇到任何註冊登入、資料同步等問題，請寄信至：<br/><a href="mailto:a0903383712@gmail.com" className="text-amber-500 hover:text-amber-400 font-bold underline cursor-pointer">a0903383712@gmail.com</a></p>
                 </div>
            )}
            {docModalType === 'privacy' && (
