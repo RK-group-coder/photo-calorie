@@ -156,6 +156,7 @@ function App() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [isCelebrationActive, setIsCelebrationActive] = useState(false);
   const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -769,7 +770,7 @@ function App() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return alert('請先登入');
 
-      setIsAuthLoading(true);
+      setIsSaving(true);
       try {
         const cloudImageUrl = await uploadImage(selectedImage, 'food');
         const logData = {
@@ -800,11 +801,11 @@ function App() {
         setIsCapturing(false);
         setSelectedImage(null);
         setAnalysisResult(null);
-        alert('🌈 飲食紀錄已成功雲端同步！');
+        // Single quick buzz or minor alert
       } catch (err) {
         alert('儲存失敗，請檢查網路連線');
       } finally {
-        setIsAuthLoading(false);
+        setIsSaving(false);
       }
     }
   };
@@ -1671,14 +1672,25 @@ function App() {
             <div className="pt-4 flex gap-3">
               <button 
                 onClick={confirmLog}
-                className="flex-[2] py-6 bg-primary text-black font-black text-xl rounded-[28px] shadow-[0_20px_40px_rgba(245,158,11,0.2)] active:scale-95 transition-all flex items-center justify-center gap-3"
+                disabled={isSaving}
+                className={`flex-[2] py-6 rounded-[28px] font-black text-xl transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 ${isSaving ? 'bg-zinc-800 text-zinc-500 cursor-wait' : 'bg-primary text-black'}`}
               >
-                <CheckCircle2 size={24} />
-                確認並紀錄此餐
+                {isSaving ? (
+                  <>
+                    <RefreshCcw size={24} className="animate-spin" />
+                    正在同步雲端...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={24} />
+                    確認並紀錄此餐
+                  </>
+                )}
               </button>
               <button 
                 onClick={() => { setSelectedImage(null); setAnalysisResult(null); }}
-                className="flex-1 py-6 bg-zinc-900 text-zinc-400 font-bold rounded-[28px] active:scale-95 transition-all flex items-center justify-center border border-white/5"
+                disabled={isSaving}
+                className="flex-1 py-6 bg-zinc-900 text-zinc-400 font-bold rounded-[28px] active:scale-95 transition-all flex items-center justify-center border border-white/5 disabled:opacity-50"
               >
                 <RefreshCcw size={20} />
               </button>
