@@ -268,7 +268,8 @@ function App() {
             carbs: l.carbs,
             fat: l.fats,
             timestamp: localDate.getTime(),
-            imageUrl: l.image_url
+            imageUrl: l.image_url,
+            notes: l.notes
           };
         });
         setLogs(formattedLogs);
@@ -818,6 +819,7 @@ function App() {
           protein: analysisResult.protein,
           carbs: analysisResult.carbs,
           fats: analysisResult.fat,
+          notes: analysisResult.notes || '',
           image_url: cloudImageUrl
         };
 
@@ -831,6 +833,7 @@ function App() {
           protein: logData.protein,
           carbs: logData.carbs,
           fat: logData.fats,
+          notes: logData.notes,
           timestamp: Date.now(),
           imageUrl: cloudImageUrl
         };
@@ -839,6 +842,10 @@ function App() {
         setIsCapturing(false);
         setSelectedImage(null);
         setAnalysisResult(null);
+        if (videoStream) {
+          videoStream.getTracks().forEach(track => track.stop());
+          setVideoStream(null);
+        }
         // Single quick buzz or minor alert
       } catch (err) {
         alert('儲存失敗，請檢查網路連線');
@@ -1663,10 +1670,15 @@ function App() {
 
               <div className="flex items-center gap-6">
                 <div className="flex flex-col">
-                  <span className="text-7xl font-black text-primary italic tracking-tighter leading-none">
-                    {analysisResult.calories}
-                  </span>
-                  <span className="text-sm font-black text-primary uppercase tracking-[0.3em] ml-1 mt-1">KCAL</span>
+                  <div className="flex items-baseline gap-1">
+                    <input 
+                      type="number"
+                      value={analysisResult.calories}
+                      onChange={(e) => setAnalysisResult({...analysisResult, calories: Number(e.target.value)})}
+                      className="text-7xl font-black text-primary italic tracking-tighter leading-none bg-transparent border-none outline-none w-[180px] focus:ring-0"
+                    />
+                  </div>
+                  <span className="text-sm font-black text-primary uppercase tracking-[0.3em] ml-1 mt-1">KCAL (可點擊修改)</span>
                 </div>
                 <div className="h-14 w-[1px] bg-white/10" />
                 <div className="flex flex-col justify-center">
@@ -1679,12 +1691,20 @@ function App() {
             {/* 2. Precision Macronutrient Grid - STRICT WHITE FONT */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'CARBS 碳水', value: analysisResult.carbs },
-                { label: 'PROTEIN 蛋白', value: analysisResult.protein },
-                { label: 'FATS 脂肪', value: analysisResult.fat }
+                { label: 'CARBS 碳水', value: analysisResult.carbs, key: 'carbs' },
+                { label: 'PROTEIN 蛋白', value: analysisResult.protein, key: 'protein' },
+                { label: 'FATS 脂肪', value: analysisResult.fat, key: 'fat' }
               ].map((macro, i) => (
                 <div key={i} className="bg-zinc-900/50 p-6 rounded-[32px] border border-white/5 flex flex-col items-center gap-1 shadow-xl">
-                  <span className="text-4xl font-black text-white">{macro.value}<span className="text-[10px] ml-0.5 opacity-40">g</span></span>
+                  <div className="flex items-center">
+                    <input 
+                      type="number"
+                      value={macro.value}
+                      onChange={(e) => setAnalysisResult({...analysisResult, [macro.key]: Number(e.target.value)})}
+                      className="text-3xl font-black text-white bg-transparent border-none outline-none w-16 text-center focus:ring-0"
+                    />
+                    <span className="text-[10px] opacity-40 font-black">g</span>
+                  </div>
                   <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">{macro.label}</span>
                 </div>
               ))}
@@ -1716,23 +1736,39 @@ function App() {
               </div>
             </div>
             
-            {/* 4. Professional Nutritionist's Evaluation */}
-            {analysisResult.evaluation && (
-              <div className="bg-primary/5 p-8 rounded-[36px] border border-primary/10 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full -mr-16 -mt-16" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black">
-                       <Activity size={18} />
+            {/* 4. Professional Nutritionist's Evaluation & USER NOTES */}
+            <div className="space-y-6">
+              {analysisResult.evaluation && (
+                <div className="bg-primary/5 p-8 rounded-[36px] border border-primary/10 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full -mr-16 -mt-16" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black">
+                         <Activity size={18} />
+                      </div>
+                      <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] italic">Consultant's Diagnosis / 營養師診斷</h4>
                     </div>
-                    <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] italic">Consultant's Diagnosis / 營養師診斷</h4>
+                    <p className="text-[15px] text-zinc-200 leading-relaxed font-bold tracking-tight">
+                      {analysisResult.evaluation}
+                    </p>
                   </div>
-                  <p className="text-[15px] text-zinc-200 leading-relaxed font-bold tracking-tight">
-                    {analysisResult.evaluation}
-                  </p>
                 </div>
+              )}
+
+              {/* 🖊️ USER PERSONAL NOTES */}
+              <div className="bg-zinc-900/50 p-8 rounded-[36px] border border-white/5 space-y-4">
+                <div className="flex items-center gap-3">
+                   <PenLine size={18} className="text-zinc-500" />
+                   <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest italic">Personal Notes / 此餐備註</h4>
+                </div>
+                <textarea 
+                  value={analysisResult.notes || ''}
+                  onChange={(e) => setAnalysisResult({...analysisResult, notes: e.target.value})}
+                  placeholder="例如：無糖、去冰、醬料減半..."
+                  className="w-full bg-transparent border-none outline-none text-zinc-100 font-medium text-sm min-h-[80px] resize-none placeholder:text-zinc-700"
+                />
               </div>
-            )}
+            </div>
 
             {/* 5. Final Confirmation Action */}
             <div className="pt-4 flex gap-3">
