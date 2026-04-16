@@ -872,7 +872,6 @@ function App() {
       } finally {
         setIsSaving(false);
       }
-    }
   };
 
   const confirmManualEntry = async () => {
