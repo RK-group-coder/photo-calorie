@@ -812,19 +812,24 @@ function App() {
       setIsSaving(true);
       try {
         const cloudImageUrl = await uploadImage(selectedImage, 'food');
+        
+        // Ensure values are numbers (GPT might return strings)
         const logData = {
           user_id: user.id,
           food_name: analysisResult.foodName,
-          calories: analysisResult.calories,
-          protein: analysisResult.protein,
-          carbs: analysisResult.carbs,
-          fats: analysisResult.fat,
+          calories: Number(analysisResult.calories) || 0,
+          protein: Number(analysisResult.protein) || 0,
+          carbs: Number(analysisResult.carbs) || 0,
+          fats: Number(analysisResult.fat) || 0,
           notes: analysisResult.notes || '',
-          image_url: cloudImageUrl
+          image_url: cloudImageUrl,
+          // 🌏 Fix: Use selectedDate to allow historical recording
+          created_at: selectedDate.toISOString()
         };
 
         const { data, error } = await supabase.from('logs').insert([logData]).select();
         if (error) throw error;
+        if (!data || data.length === 0) throw new Error('伺服器未回傳儲存結果');
 
         const newLog: FoodLog = {
           id: data[0].id,
@@ -834,7 +839,7 @@ function App() {
           carbs: logData.carbs,
           fat: logData.fats,
           notes: logData.notes,
-          timestamp: Date.now(),
+          timestamp: selectedDate.getTime(), // 🌏 Fix: Immediate visibility on selectedDate
           imageUrl: cloudImageUrl
         };
 
@@ -846,9 +851,12 @@ function App() {
           videoStream.getTracks().forEach(track => track.stop());
           setVideoStream(null);
         }
-        // Single quick buzz or minor alert
-      } catch (err) {
-        alert('儲存失敗，請檢查網路連線');
+        
+        // Visual feedback
+        if ('vibrate' in navigator) navigator.vibrate(50);
+      } catch (err: any) {
+        console.error('Save failed:', err);
+        alert('儲存失敗: ' + (err.message || '請檢查網路連線'));
       } finally {
         setIsSaving(false);
       }
@@ -870,15 +878,19 @@ function App() {
       const logData = {
         user_id: user.id,
         food_name: manualFormData.name,
-        calories: parseInt(manualFormData.calories),
-        protein: parseInt(manualFormData.protein || '0'),
-        carbs: parseInt(manualFormData.carbs || '0'),
-        fats: parseInt(manualFormData.fat || '0'),
-        image_url: finalImageUrl
+        calories: Number(manualFormData.calories) || 0,
+        protein: Number(manualFormData.protein) || 0,
+        carbs: Number(manualFormData.carbs) || 0,
+        fats: Number(manualFormData.fat) || 0,
+        notes: manualFormData.notes || '',
+        image_url: finalImageUrl,
+        // 🌏 Fix: Sync historical date to DB
+        created_at: selectedDate.toISOString()
       };
 
       const { data, error } = await supabase.from('logs').insert([logData]).select();
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('伺服器未回傳儲存結果');
 
       const newLog: FoodLog = {
         id: data[0].id,
@@ -887,6 +899,7 @@ function App() {
         protein: logData.protein,
         carbs: logData.carbs,
         fat: logData.fats,
+        notes: logData.notes,
         timestamp: selectedDate.getTime(),
         imageUrl: finalImageUrl
       };
@@ -895,8 +908,9 @@ function App() {
       setIsManualModalOpen(false);
       setManualFormData({ name: '', calories: '', protein: '', carbs: '', fat: '', notes: '', image: null });
       alert('📝 手動紀錄已成功同步！');
-    } catch (err) {
-      alert('儲存失敗，請檢查網路');
+    } catch (err: any) {
+      console.error('Manual save failed:', err);
+      alert('儲存失敗: ' + (err.message || '請檢查網路連線'));
     } finally {
       setIsAuthLoading(false);
     }
