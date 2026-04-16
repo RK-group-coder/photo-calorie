@@ -840,32 +840,56 @@ function App() {
   };
 
   const confirmManualEntry = async () => {
-    if (!manualFormData.name || !manualFormData.calories) return;
+    // 🔍 DEBUG: Immediate entry point check
+    console.log('DEBUG: confirmManualEntry called', manualFormData);
     
-    setIsAuthLoading(true);
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) throw new Error('請先登入或檢查網路狀態');
-
-      let finalImageUrl = '';
-      if (manualFormData.image) {
-        finalImageUrl = await uploadImage(manualFormData.image, 'food');
+      if (!manualFormData.name || !manualFormData.calories) {
+        alert('請填寫食物名稱與熱量才能儲存');
+        return;
       }
 
-      const logData = {
+      setIsAuthLoading(true);
+      console.log('DEBUG: setIsAuthLoading(true)');
+
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      console.log('DEBUG: Auth checked', { authData, authError });
+
+      if (authError || !authData.user) {
+        setIsAuthLoading(false);
+        return alert('請先登入 (或者是登入已過期)');
+      }
+
+      const user = authData.user;
+      let finalImageUrl = '';
+      if (manualFormData.image) {
+        console.log('DEBUG: Starting image upload');
+        finalImageUrl = await uploadImage(manualFormData.image, 'food');
+        console.log('DEBUG: Image upload finished', finalImageUrl);
+      }
+
+      const logData: any = {
         user_id: user.id,
         food_name: manualFormData.name,
         calories: Number(manualFormData.calories) || 0,
         protein: Number(manualFormData.protein) || 0,
         carbs: Number(manualFormData.carbs) || 0,
         fats: Number(manualFormData.fat) || 0,
-        notes: manualFormData.notes || '',
         image_url: finalImageUrl,
         created_at: selectedDate.toISOString()
       };
 
+      console.log('DEBUG: Starting DB insert (v3 - no notes column)', logData);
       const { data, error } = await supabase.from('logs').insert([logData]).select();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('DEBUG: DB insert error', error);
+        throw error;
+      }
+      
+      if (!data || data.length === 0) {
+        throw new Error('伺服器未回傳儲存結果 (Insert succeeded but select empty)');
+      }
 
       const newLog: FoodLog = {
         id: data[0].id,
@@ -879,13 +903,15 @@ function App() {
         imageUrl: finalImageUrl
       };
 
+      console.log('DEBUG: Saving to local state');
       setLogs([newLog, ...logs]);
       setIsManualModalOpen(false);
       setManualFormData({ name: '', calories: '', protein: '', carbs: '', fat: '', notes: '', image: null });
-      alert('📝 紀錄已成功同步！');
+      alert('✅ 紀錄已成功同步！');
     } catch (err: any) {
-      console.error('Final Save Error:', err);
-      alert('儲存失敗: ' + (err.message || '請確認網路連線'));
+      console.error('CRITICAL ERROR in confirmManualEntry:', err);
+      const errorMsg = err.message || JSON.stringify(err);
+      alert('儲存失敗 (代碼 500): ' + errorMsg);
     } finally {
       setIsAuthLoading(false);
     }
@@ -912,14 +938,16 @@ function App() {
     
     setIsAuthLoading(true);
     try {
-      const { error } = await supabase.from('logs').update({
+      const updateData: any = {
         food_name: editingLog.foodName,
         calories: Number(editingLog.calories),
         protein: Number(editingLog.protein),
         carbs: Number(editingLog.carbs),
-        fats: Number(editingLog.fat),
-        notes: editingLog.notes
-      }).eq('id', editingLog.id);
+        fats: Number(editingLog.fat)
+        // notes excluded due to missing DB column
+      };
+
+      const { error } = await supabase.from('logs').update(updateData).eq('id', editingLog.id);
 
       if (error) throw error;
       
