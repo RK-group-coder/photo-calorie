@@ -868,18 +868,19 @@ function App() {
         console.log('DEBUG: Image upload finished', finalImageUrl);
       }
 
-      const logData: any = {
+      const logData = {
         user_id: user.id,
         food_name: manualFormData.name,
         calories: Number(manualFormData.calories) || 0,
         protein: Number(manualFormData.protein) || 0,
         carbs: Number(manualFormData.carbs) || 0,
         fats: Number(manualFormData.fat) || 0,
+        notes: manualFormData.notes || '',
         image_url: finalImageUrl,
         created_at: selectedDate.toISOString()
       };
 
-      console.log('DEBUG: Starting DB insert (v3 - no notes column)', logData);
+      console.log('DEBUG: Starting DB insert (v4 - full support)', logData);
       const { data, error } = await supabase.from('logs').insert([logData]).select();
       
       if (error) {
@@ -938,13 +939,13 @@ function App() {
     
     setIsAuthLoading(true);
     try {
-      const updateData: any = {
+      const updateData = {
         food_name: editingLog.foodName,
         calories: Number(editingLog.calories),
         protein: Number(editingLog.protein),
         carbs: Number(editingLog.carbs),
-        fats: Number(editingLog.fat)
-        // notes excluded due to missing DB column
+        fats: Number(editingLog.fat),
+        notes: editingLog.notes
       };
 
       const { error } = await supabase.from('logs').update(updateData).eq('id', editingLog.id);
@@ -3136,6 +3137,15 @@ function App() {
                         onChange={e => setEditingLog({...editingLog, fat: Number(e.target.value)})}
                       />
                     </div>
+                  </div>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase pl-1 block">備註 (註記)</label>
+                    <textarea 
+                      className="w-full bg-zinc-800 border-none rounded-2xl p-4 text-white font-medium text-sm min-h-[100px] outline-none focus:ring-1 focus:ring-primary/20"
+                      value={editingLog.notes || ''}
+                      onChange={e => setEditingLog({...editingLog, notes: e.target.value})}
+                      placeholder="尚無備註..."
+                    />
                   </div>
                 </div>
 
