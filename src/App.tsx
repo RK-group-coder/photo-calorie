@@ -841,11 +841,12 @@ function App() {
 
   const confirmManualEntry = async () => {
     if (!manualFormData.name || !manualFormData.calories) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return alert('請先登入');
-
+    
     setIsAuthLoading(true);
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('請先登入或檢查網路狀態');
+
       let finalImageUrl = '';
       if (manualFormData.image) {
         finalImageUrl = await uploadImage(manualFormData.image, 'food');
@@ -860,13 +861,11 @@ function App() {
         fats: Number(manualFormData.fat) || 0,
         notes: manualFormData.notes || '',
         image_url: finalImageUrl,
-        // 🌏 Fix: Sync historical date to DB
         created_at: selectedDate.toISOString()
       };
 
       const { data, error } = await supabase.from('logs').insert([logData]).select();
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error('伺服器未回傳儲存結果');
 
       const newLog: FoodLog = {
         id: data[0].id,
@@ -883,10 +882,10 @@ function App() {
       setLogs([newLog, ...logs]);
       setIsManualModalOpen(false);
       setManualFormData({ name: '', calories: '', protein: '', carbs: '', fat: '', notes: '', image: null });
-      alert('📝 手動紀錄已成功同步！');
+      alert('📝 紀錄已成功同步！');
     } catch (err: any) {
-      console.error('Manual save failed:', err);
-      alert('儲存失敗: ' + (err.message || '請檢查網路連線'));
+      console.error('Final Save Error:', err);
+      alert('儲存失敗: ' + (err.message || '請確認網路連線'));
     } finally {
       setIsAuthLoading(false);
     }
