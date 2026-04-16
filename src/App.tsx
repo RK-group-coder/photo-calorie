@@ -809,69 +809,34 @@ function App() {
     }
   };
 
-  const confirmLog = async () => {
+  const confirmLog = () => {
     if (!analysisResult || !selectedImage) {
       alert('分析數據或照片遺失，請重新拍攝');
       return;
     }
 
-    setIsSaving(true);
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        setIsSaving(false);
-        return alert('請先登入 (或者是登入已過期)');
-      }
+    // 🚀 Step 2: NEW FLOW - Import to Manual Form for Final Review
+    setManualFormData({
+      name: analysisResult.foodName,
+      calories: String(analysisResult.calories || ''),
+      protein: String(analysisResult.protein || ''),
+      carbs: String(analysisResult.carbs || ''),
+      fat: String(analysisResult.fat || ''),
+      notes: analysisResult.notes || analysisResult.evaluation || '',
+      image: selectedImage
+    });
 
-      const cloudImageUrl = await uploadImage(selectedImage, 'food');
-        
-        // Ensure values are numbers (GPT might return strings)
-        const logData = {
-          user_id: user.id,
-          food_name: analysisResult.foodName,
-          calories: Number(analysisResult.calories) || 0,
-          protein: Number(analysisResult.protein) || 0,
-          carbs: Number(analysisResult.carbs) || 0,
-          fats: Number(analysisResult.fat) || 0,
-          notes: analysisResult.notes || '',
-          image_url: cloudImageUrl,
-          // 🌏 Fix: Use selectedDate to allow historical recording
-          created_at: selectedDate.toISOString()
-        };
+    // Close Scan, Open Manual Modal
+    setIsManualModalOpen(true);
+    setIsCapturing(false);
+    
+    // 💡 IMPORTANT: Do NOT setAnalysisResult(null) or setSelectedImage(null) here.
+    // Transition hand-off requires data to remain until unmount.
 
-        const { data, error } = await supabase.from('logs').insert([logData]).select();
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error('伺服器未回傳儲存結果');
-
-        const newLog: FoodLog = {
-          id: data[0].id,
-          foodName: logData.food_name,
-          calories: logData.calories,
-          protein: logData.protein,
-          carbs: logData.carbs,
-          fat: logData.fats,
-          notes: logData.notes,
-          timestamp: selectedDate.getTime(), // 🌏 Fix: Immediate visibility on selectedDate
-          imageUrl: cloudImageUrl
-        };
-
-        setLogs([newLog, ...logs]);
-        setIsCapturing(false);
-        setSelectedImage(null);
-        setAnalysisResult(null);
-        if (videoStream) {
-          videoStream.getTracks().forEach(track => track.stop());
-          setVideoStream(null);
-        }
-        
-        // Visual feedback
-        if ('vibrate' in navigator) navigator.vibrate(50);
-      } catch (err: any) {
-        console.error('Save failed:', err);
-        alert('儲存失敗: ' + (err.message || '請檢查網路連線'));
-      } finally {
-        setIsSaving(false);
-      }
+    if (videoStream) {
+      videoStream.getTracks().forEach(track => track.stop());
+      setVideoStream(null);
+    }
   };
 
   const confirmManualEntry = async () => {
