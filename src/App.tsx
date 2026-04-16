@@ -749,10 +749,15 @@ function App() {
 
   const uploadImage = async (base64: string, path: string) => {
     try {
-      // 🚀 TURBO SYNC: Image Compression Logic
+      // 🚀 TURBO SYNC: Image Compression Logic with Safety Timeout
       const img = new Image();
       img.src = base64;
-      await new Promise(resolve => img.onload = resolve);
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('圖片讀取失敗'));
+        // 10 second timeout for image processing
+        setTimeout(() => reject(new Error('圖片處理逾時')), 10000);
+      });
 
       const canvas = document.createElement('canvas');
       let width = img.width;
@@ -805,13 +810,20 @@ function App() {
   };
 
   const confirmLog = async () => {
-    if (analysisResult && selectedImage) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return alert('請先登入');
+    if (!analysisResult || !selectedImage) {
+      alert('分析數據或照片遺失，請重新拍攝');
+      return;
+    }
 
-      setIsSaving(true);
-      try {
-        const cloudImageUrl = await uploadImage(selectedImage, 'food');
+    setIsSaving(true);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setIsSaving(false);
+        return alert('請先登入 (或者是登入已過期)');
+      }
+
+      const cloudImageUrl = await uploadImage(selectedImage, 'food');
         
         // Ensure values are numbers (GPT might return strings)
         const logData = {
