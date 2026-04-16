@@ -1799,20 +1799,10 @@ function App() {
             <div className="pt-4 flex gap-3">
               <button 
                 onClick={confirmLog}
-                disabled={isSaving}
-                className={`flex-[2] py-6 rounded-[28px] font-black text-xl transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 ${isSaving ? 'bg-zinc-800 text-zinc-500 cursor-wait' : 'bg-primary text-black'}`}
+                className="flex-[2] py-6 rounded-[28px] font-black text-xl transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 bg-primary text-black"
               >
-                {isSaving ? (
-                  <>
-                    <RefreshCcw size={24} className="animate-spin" />
-                    正在同步雲端...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 size={24} />
-                    確認並紀錄此餐
-                  </>
-                )}
+                <ChevronRight size={24} strokeWidth={3} />
+                下一步：核對與儲存
               </button>
               <button 
                 onClick={() => { setSelectedImage(null); setAnalysisResult(null); }}
